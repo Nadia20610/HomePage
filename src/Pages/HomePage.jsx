@@ -20,9 +20,120 @@ export const useTheme = () => {
 
     return { theme, toggleTheme };
 };
+export const useScrollEffects = (theme) => {
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrolled = window.scrollY > 50;
+      setIsScrolled(scrolled);
+      
+      const navbar = document.querySelector('.navbar');
+      if (navbar) {
+        if (scrolled) {
+          navbar.style.background = theme === 'dark' 
+            ? 'rgba(26, 32, 44, 0.95)' 
+            : 'rgba(255, 255, 255, 0.95)';
+        } else {
+          navbar.style.background = 'var(--bg-primary)';
+        }
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [theme]);
+
+  return { isScrolled };
+};
+
+export const useSmoothScroll = () => {
+  useEffect(() => {
+    const handleAnchorClick = (e) => {
+      const href = e.currentTarget.getAttribute('href');
+      if (href && href.startsWith('#')) {
+        e.preventDefault();
+        const target = document.querySelector(href);
+        if (target) {
+          target.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start'
+          });
+        }
+      }
+    };
+
+    const anchors = document.querySelectorAll('a[href^="#"]');
+    anchors.forEach(anchor => {
+      anchor.addEventListener('click', handleAnchorClick);
+    });
+
+    return () => {
+      anchors.forEach(anchor => {
+        anchor.removeEventListener('click', handleAnchorClick);
+      });
+    };
+  }, []);
+};
+
+export const useMobileMenu = () => {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  const toggleMenu = () => {
+    setIsMenuOpen(!isMenuOpen);
+  };
+
+  const closeMenu = () => {
+    setIsMenuOpen(false);
+  };
+
+  useEffect(() => {
+    const navbarCollapse = document.getElementById('navbarButtons');
+
+    if (navbarCollapse) {
+      const handleCollapseClick = (e) => {
+        const rect = navbarCollapse.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+        const clickY = e.clientY - rect.top;
+
+        if (clickX >= rect.width - 80 && clickX <= rect.width - 30 &&
+            clickY >= 30 && clickY <= 80) {
+          closeMenu();
+        }
+
+        if (e.target === navbarCollapse) {
+          closeMenu();
+        }
+      };
+
+      navbarCollapse.addEventListener('click', handleCollapseClick);
+
+      return () => {
+        navbarCollapse.removeEventListener('click', handleCollapseClick);
+      };
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isMenuOpen]);
+
+  return { isMenuOpen, toggleMenu, closeMenu };
+};
 
 function HomePage() {
     const { theme, toggleTheme } = useTheme();
+    const { isScrolled } = useScrollEffects(theme);
+    const { isMenuOpen, toggleMenu, closeMenu } = useMobileMenu();
+    useSmoothScroll();
 
     return (
         <div className="home-page" style={{ fontFamily: "'Nunito', sans-serif" }} >
@@ -35,13 +146,44 @@ function HomePage() {
                     </a>
 
                     {/* <!-- Hamburger Button (for mobile) --> */}
-                    <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarButtons"
-                        aria-controls="navbarButtons" aria-expanded="false" aria-label="Toggle navigation">
+                    <button
+                        className="navbar-toggler"
+                        type="button"
+                        onClick={toggleMenu}
+                        aria-controls="navbarButtons"
+                        aria-expanded={isMenuOpen}
+                        aria-label="Toggle navigation"
+                    >
                         <span className="navbar-toggler-icon"></span>
                     </button>
 
                     {/* <!-- Buttons go inside here so they collapse on small screens --> */}
-                    <div className="collapse navbar-collapse justify-content-end" id="navbarButtons">
+                    <div className={`collapse navbar-collapse justify-content-end ${isMenuOpen ? 'show' : ''}`} id="navbarButtons">
+                        {/* Close button for mobile - only visible when menu is open */}
+                        {isMenuOpen && (
+                            <button
+                                className="btn-close position-absolute"
+                                style={{
+                                    top: '30px',
+                                    right: '30px',
+                                    zIndex: 10000,
+                                    width: '50px',
+                                    height: '50px',
+                                    fontSize: '2rem',
+                                    background: 'var(--bg-secondary)',
+                                    border: '1px solid var(--border-color)',
+                                    borderRadius: '50%',
+                                    color: 'var(--text-primary)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                }}
+                                onClick={closeMenu}
+                                aria-label="Close menu"
+                            >
+                                ×
+                            </button>
+                        )}
 
                         <ul className="navbar-nav  align-items-lg-center gap-3 flex-column flex-lg-row mobile-menu-items">
                             {/* <!-- Theme Toggle --> */}
@@ -56,13 +198,13 @@ function HomePage() {
 
                             {/* <!-- Sign In --> */}
                             <li className="nav-item">
-                                <a href="https://sharmgo.com/signin">
+                                <a href="https://sharmgo.com/signin" onClick={closeMenu}>
                                     <button className="btn btn-outline-primary w-100 w-lg-auto">Sign In</button></a>
                             </li>
 
                             {/* <!-- Sign Up --> */}
                             <li className="nav-item">
-                                <a href="https://sharmgo.com/signup"><button className="btn btn-primary w-100 w-lg-auto">Sign Up</button></a>
+                                <a href="https://sharmgo.com/signup" onClick={closeMenu}><button className="btn btn-primary w-100 w-lg-auto">Sign Up</button></a>
                             </li>
                         </ul>
                     </div>
